@@ -1,0 +1,8 @@
+table, tr, td{
+    border-width: 0.1ch;
+    border-collapse: collapse;
+    border-style: solid;
+}
+td{
+    padding: 1%;
+}
