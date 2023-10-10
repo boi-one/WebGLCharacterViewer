@@ -3,57 +3,34 @@ let canvas = document.querySelector('canvas');
 let gl = canvas.getContext('webgl');
 let model;
 //let objectPath = './Susan.json';
-let objectPath = './player_athleticmale.json'
+let vshader = './shader.vs.glsl';
+let fshader = './shader.fs.glsl';
+let objectPath = './player_athleticmale.json';
 let objectTexturePath = './texture.png';
+
+class Resources{
+	vertexShader;
+	fragmentShader;
+	texture;
+	object;
+}
 
 class ModelAttributes{
 	Vertices;
 	Indices;
 	TexCoords;
 }
-async function loadFiles(shaderUrl, TextureUrl, JSONUrl){
-	loadShaderResource(shaderUrl);
-	let loadedJSON = loadJSONResource('./player_athleticmale.json');
-	loadTextureAndJSON(objectTexturePath, loadedJSON);
+async function loadFiles(vsshaderUrl, fsshaderUrl, TextureUrl, JSONUrl){
+	const objectResources = new Resources();
+	objectResources.vertexShader = await loadShaderResource(vsshaderUrl);
+	objectResources.fragmentShader = await loadShaderResource(fsshaderUrl)
+	objectResources.object = await loadJSONResource(JSONUrl);
+	console.log(objectResources);
+	return objectResources;
 }
-async function startGL(){
-	let source = await loadFiles('./shader.vs.glsl');
-	console.log(source);
-}
-startGL(); //TODO:VERDER MET OPSCHONEN VAN DE CODE, MEERDERE MODELLEN INLADEN ACHTER ELKAAR.
+loadFiles(fshader, vshader, objectTexturePath, objectPath); //TODO:FIX INLADEN VAN BESTANDEN, MEERDERE MODELLEN INLADEN ACHTER ELKAAR https://webglfundamentals.org/webgl/lessons/webgl-drawing-multiple-things.html.
 
-let GetResources = function () {
-	loadTextResource('./shader.vs.glsl', function (vsErr, vsText) {
-		if (vsErr) {
-			alert('Fatal error getting vertex shader (see console)');
-			console.error(vsErr);
-		} else {
-			loadTextResource('./shader.fs.glsl', function (fsErr, fsText) {
-				if (fsErr) {
-					alert('Fatal error getting fragment shader (see console)');
-					console.error(fsErr);
-				} else {
-					loadJSONResource(objectPath, function(modelErr, modelObj){
-						if(modelErr){
-							alert('Fatal error getting model see console');
-						} else{
-							loadImage(objectTexturePath, function(imgErr, img){
-								if(imgErr){
-									alert('Fatal error getting texture');
-									console.error(imgErr);
-								} else{
-									Start(vsText, fsText, img, modelObj);
-									console.log("started");
-								}
-							})
-						}
-					})
-				}
-			});
-		}
-	});
-}
-function CreateTexture(){
+function CreateTexture(texture){
 	let modelTexture = gl.createTexture();
 	gl.bindTexture(gl.TEXTURE_2D, modelTexture);
 	gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true)
@@ -100,6 +77,45 @@ function CreateProgram(vertexShader, fragmentShader){
 	}
 	return program;
 }
+function CreateBuffer(ModelResources, meshArrayPosition){
+	let vertices = ModelResources.object.meshes[meshArrayPosition].vertices;
+	let indices = [].concat.apply([], ModelResources.object.meshes[meshArrayPosition].faces);
+	let textureCoords = ModelResources.object.meshes[meshArrayPosition].textureCoords[meshArrayPosition];
+	return new ModelAttributes(vertices, indices, textureCoords);
+}
+function BindBuffer(modelAttribs, program){
+	let modelPosVertexBufferObject = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, modelPosVertexBufferObject);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelAttribs.vertices), gl.STATIC_DRAW);
+	let modelTexCoordVertexBufferObject = gl.createBuffer();
+	gl.bindBuffer(gl.ARRAY_BUFFER, modelTexCoordVertexBufferObject);
+	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelAttribs.textureCoords), gl.STATIC_DRAW);
+	let modelIndexBufferObject = gl.createBuffer();
+	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, modelIndexBufferObject);
+	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(modelAttribs.indices), gl.STATIC_DRAW);
+	gl.bindBuffer(gl.ARRAY_BUFFER, modelPosVertexBufferObject);
+	let positionAttribLocation = gl.getAttribLocation(program, 'vertPosition');
+	gl.vertexAttribPointer(
+	positionAttribLocation, // Attribute location
+	3, // Number of elements per attribute
+	gl.FLOAT, // Type of elements
+	gl.FALSE,
+	3 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
+	0 // Offset from the beginning of a single vertex to this attribute
+	);
+	gl.enableVertexAttribArray(positionAttribLocation);
+	gl.bindBuffer(gl.ARRAY_BUFFER, modelTexCoordVertexBufferObject);
+	let texCoordAttribLocation = gl.getAttribLocation(program, 'vertTexCoord');
+	gl.vertexAttribPointer(
+		texCoordAttribLocation, // Attribute location
+		2, // Number of elements per attribute
+		gl.FLOAT, // Type of elements
+		gl.FALSE,
+		2 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
+		0
+	);
+	gl.enableVertexAttribArray(texCoordAttribLocation);
+}
 
 //loadTextResourceNEW(objectTexturePath);
 
@@ -123,90 +139,23 @@ let Start = function (vertexShaderText, fragmentShaderText, texture, playerModel
 	let vertexShader = CreateShader(gl.VERTEX_SHADER, vertexShaderText);
 	let fragmentShader = CreateShader(gl.FRAGMENT_SHADER, fragmentShaderText);
 	let shaderProgram = CreateProgram(vertexShader, fragmentShader);
-
-	//nieuw
-	////////
-	//oud
-
-	
-
-	
-	
-	
-	
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	//
-	// Create buffer(s)
-	//
-
-	
-	let modelAttributes = new ModelAttributes;
-
-	for (let index = 0; index <model.meshes.length; index++) {
-		console.log("itteration: " + index);
-		let modelVertices = model.meshes[0].vertices;
-		let modelIndices = [].concat.apply([], model.meshes[0].faces);
-		let modelTexCoords = model.meshes[0].texturecoords[0];
-
-		modelAttributes.Vertices = modelVertices;
-		modelAttributes.Indices = modelIndices;
-		modelAttributes.TexCoords = modelTexCoords; 
-		
-		let modelPosVertexBufferObject = gl.createBuffer();
-		gl.bindBuffer(gl.ARRAY_BUFFER, modelPosVertexBufferObject);
-		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelVertices), gl.STATIC_DRAW);
-
-		let modelTexCoordVertexBufferObject = gl.createBuffer();
-		gl.bindBuffer(gl.ARRAY_BUFFER, modelTexCoordVertexBufferObject);
-		gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelTexCoords), gl.STATIC_DRAW);
-
-		var modelIndexBufferObject = gl.createBuffer();
-		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, modelIndexBufferObject);
-		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(modelIndices), gl.STATIC_DRAW);
-
-		gl.bindBuffer(gl.ARRAY_BUFFER, modelPosVertexBufferObject);
-		var positionAttribLocation = gl.getAttribLocation(program, 'vertPosition');
-		gl.vertexAttribPointer(
-		positionAttribLocation, // Attribute location
-		3, // Number of elements per attribute
-		gl.FLOAT, // Type of elements
-		gl.FALSE,
-		3 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-		0 // Offset from the beginning of a single vertex to this attribute
-		);
-		gl.enableVertexAttribArray(positionAttribLocation);
-
-		gl.bindBuffer(gl.ARRAY_BUFFER, modelTexCoordVertexBufferObject);
-		var texCoordAttribLocation = gl.getAttribLocation(program, 'vertTexCoord');
-		gl.vertexAttribPointer(
-			texCoordAttribLocation, // Attribute location
-			2, // Number of elements per attribute
-			gl.FLOAT, // Type of elements
-			gl.FALSE,
-			2 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-			0
-		);
-		gl.enableVertexAttribArray(texCoordAttribLocation);
-	}
-
-	//
-	// Create texture
-	//
-	
+	let objectResources = loadFiles();
+	let modelAttribs = CreateBuffer(objectResources, 0);
+	BindBuffer(modelAttribs, shaderProgram);
 	CreateTexture();
 
 	
 
 	// Tell OpenGL state machine which program should be active.
-	gl.useProgram(program);
+	gl.useProgram(shaderProgram);
 
-	var matWorldUniformLocation = gl.getUniformLocation(program, 'mWorld');
-	var matViewUniformLocation = gl.getUniformLocation(program, 'mView');
-	var matProjUniformLocation = gl.getUniformLocation(program, 'mProj');
+	let matWorldUniformLocation = gl.getUniformLocation(shaderProgram, 'mWorld');
+	let matViewUniformLocation = gl.getUniformLocation(shaderProgram, 'mView');
+	let matProjUniformLocation = gl.getUniformLocation(shaderProgram, 'mProj');
 
-	var worldMatrix = new Float32Array(16);
-	var viewMatrix = new Float32Array(16);
-	var projMatrix = new Float32Array(16);
+	let worldMatrix = new Float32Array(16);
+	let viewMatrix = new Float32Array(16);
+	let projMatrix = new Float32Array(16);
 	glMatrix.mat4.identity(worldMatrix);
 	glMatrix.mat4.lookAt(viewMatrix, [0, 0, -8], [0, 0, 0], [0, 1, 0]);
 	glMatrix.mat4.perspective(projMatrix, glMatrix.glMatrix.toRadian(45), canvas.width / canvas.height, 0.1, 1000.0);
@@ -215,16 +164,16 @@ let Start = function (vertexShaderText, fragmentShaderText, texture, playerModel
 	gl.uniformMatrix4fv(matViewUniformLocation, gl.FALSE, viewMatrix);
 	gl.uniformMatrix4fv(matProjUniformLocation, gl.FALSE, projMatrix);
 
-	var xRotationMatrix = new Float32Array(16);
-	var yRotationMatrix = new Float32Array(16);
+	let xRotationMatrix = new Float32Array(16);
+	let yRotationMatrix = new Float32Array(16);
 
 	//
 	// Main render loop
 	//
-	var identityMatrix = new Float32Array(16);
+	let identityMatrix = new Float32Array(16);
 	glMatrix.mat4.identity(identityMatrix);
-	var angle = 0;
-	var loop = function () {
+	let angle = 0;
+	let loop = function () {
 		angle = performance.now() / 1000 / 6 * 2 * Math.PI;
 		glMatrix.mat4.rotate(yRotationMatrix, identityMatrix, angle, [0, 1, 0]);
 		glMatrix.mat4.rotate(xRotationMatrix, identityMatrix, angle / 4, [1, 0, 0]);
