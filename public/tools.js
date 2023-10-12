@@ -13,10 +13,10 @@ async function loadJSONResource(url){
 	return response;
 }
 
-var loadImage = function (url, callback) {
-	var image = new Image();
-	image.onload = function () {
-		callback(null, image);
-	};
+async function loadImage(url) {
+	let image = new Image();
 	image.src = url;
-};
+	image.onload = function () {
+		return image.src;
+	};
+}

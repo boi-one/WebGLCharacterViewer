@@ -23,12 +23,13 @@ class ModelAttributes{
 async function loadFiles(vsshaderUrl, fsshaderUrl, TextureUrl, JSONUrl){
 	const objectResources = new Resources();
 	objectResources.vertexShader = await loadShaderResource(vsshaderUrl);
-	objectResources.fragmentShader = await loadShaderResource(fsshaderUrl)
+	objectResources.fragmentShader = await loadShaderResource(fsshaderUrl);
+	objectResources.texture = await loadImage(TextureUrl);
 	objectResources.object = await loadJSONResource(JSONUrl);
 	console.log(objectResources);
 	return objectResources;
 }
-loadFiles(fshader, vshader, objectTexturePath, objectPath); //TODO:FIX INLADEN VAN BESTANDEN, MEERDERE MODELLEN INLADEN ACHTER ELKAAR https://webglfundamentals.org/webgl/lessons/webgl-drawing-multiple-things.html.
+loadFiles(fshader, vshader, objectTexturePath, objectPath); //TODO:MEERDERE MODELLEN INLADEN ACHTER ELKAAR https://webglfundamentals.org/webgl/lessons/webgl-drawing-multiple-things.html.
 
 function CreateTexture(texture){
 	let modelTexture = gl.createTexture();
