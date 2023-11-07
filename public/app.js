@@ -4,11 +4,10 @@ canvas.height = window.screen.height*0.8;
 
 let gl = canvas.getContext('webgl');
 let model;
-//let objectPath = './Susan.json';
 let vshader = './vertexshader.glsl';
 let fshader = './fragmentshader.glsl';
-let objectPath = './Susan.json';
-let objectTexturePath = './SusanTexture.png';
+let objectPath = './stanforddragon.json';
+let objectTexturePath = './DefaultMaterial.jpg';
 
 class Resources{
 	vertexShader;
@@ -84,8 +83,7 @@ function CreateBuffer(ModelResources, meshArrayPosition){
 	let vertices = ModelResources.model.meshes[meshArrayPosition].vertices;
 	let indices = [].concat.apply([], ModelResources.model.meshes[meshArrayPosition].faces);
 	let textureCoords = ModelResources.model.meshes[meshArrayPosition].texturecoords[meshArrayPosition];
-	let modelAttribs = new ModelAttributes(vertices, indices, textureCoords);
-	return modelAttribs;
+	return new ModelAttributes(vertices, indices, textureCoords);
 }
 function BindBuffer(buffer, bufferType, arrayType){
 	let newBuffer = gl.createBuffer();
@@ -98,44 +96,6 @@ function ConfigureAttribPointer(program, glslVar, elementsPerAttribute, elementT
 	gl.vertexAttribPointer(attribLocation, elementsPerAttribute, elementType, normalized, vertexSize, vertexOffset);
 	gl.enableVertexAttribArray(attribLocation);
 }
-function oldBindBuffer(modelAttribs, program){
-	let modelPosVertexBufferObject = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, modelPosVertexBufferObject);
-	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelAttribs.Vertices), gl.STATIC_DRAW);
-	
-	let modelTexCoordVertexBufferObject = gl.createBuffer();
-	gl.bindBuffer(gl.ARRAY_BUFFER, modelTexCoordVertexBufferObject);
-	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelAttribs.TexCoords), gl.STATIC_DRAW);
-	
-	let modelIndexBufferObject = gl.createBuffer();
-	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, modelIndexBufferObject);
-	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(modelAttribs.Indices), gl.STATIC_DRAW);
-	
-	gl.bindBuffer(gl.ARRAY_BUFFER, modelPosVertexBufferObject);
-	let positionAttribLocation = gl.getAttribLocation(program, 'vertPosition');
-	gl.vertexAttribPointer(
-	positionAttribLocation, // Attribute location
-	3, // Number of elements per attribute
-	gl.FLOAT, // Type of elements
-	gl.FALSE,
-	3 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-	0 // Offset from the beginning of a single vertex to this attribute
-	);
-	gl.enableVertexAttribArray(positionAttribLocation);
-	
-	gl.bindBuffer(gl.ARRAY_BUFFER, modelTexCoordVertexBufferObject);
-	let texCoordAttribLocation = gl.getAttribLocation(program, 'vertTexCoord');
-	gl.vertexAttribPointer(
-		texCoordAttribLocation, // Attribute location
-		2, // Number of elements per attribute
-		gl.FLOAT, // Type of elements
-		gl.FALSE,
-		2 * Float32Array.BYTES_PER_ELEMENT, // Size of an individual vertex
-		0
-	);
-	gl.enableVertexAttribArray(texCoordAttribLocation);
-}
-
 let Start = function (objectResources) {
 	if (!gl) {
 		console.log('WebGL not supported');
@@ -177,7 +137,7 @@ let Start = function (objectResources) {
 	let viewMatrix = new Float32Array(16);
 	let projMatrix = new Float32Array(16);
 	glMatrix.mat4.identity(worldMatrix);
-	glMatrix.mat4.lookAt(viewMatrix, [0, 0, -8], [0, 0, 0], [0, 1, 0]);
+	glMatrix.mat4.lookAt(viewMatrix, [0, 0, -150/*-8*/], [0, 0, 0], [0, 1, 0]);
 	glMatrix.mat4.perspective(projMatrix, glMatrix.glMatrix.toRadian(45), canvas.width / canvas.height, 0.1, 1000.0);
 	
 	
@@ -196,18 +156,19 @@ let Start = function (objectResources) {
 	let angle = 0;
 	let loop = function () {
 		angle = performance.now() / 1000 / 6 * 2 * Math.PI;
-		glMatrix.mat4.rotate(yRotationMatrix, identityMatrix, angle, [0, 1, 0]);
-		glMatrix.mat4.rotate(xRotationMatrix, identityMatrix, angle / 4, [1, 0, 0]);
+		glMatrix.mat4.rotate(yRotationMatrix, identityMatrix, angle, [1, 0, 0]);
+		glMatrix.mat4.rotate(xRotationMatrix, identityMatrix, angle / 4, [0, 1, 0]);
 		glMatrix.mat4.mul(worldMatrix, yRotationMatrix, xRotationMatrix);
 		gl.uniformMatrix4fv(matWorldUniformLocation, gl.FALSE, worldMatrix);
 
-		gl.clearColor(0.75, 0.85, 0.8, 1.0);
+		//gl.clearColor(0.75, 0.85, 0.8, 1.0);
+		//gl.clearColor(0,0,0, 1);
 		gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
 
 		gl.bindTexture(gl.TEXTURE_2D, objectResources.texture);
 		gl.activeTexture(gl.TEXTURE0);
 		
-		gl.drawElements(gl.TRIANGLES, modelAttribs.Indices.length, gl.UNSIGNED_SHORT, 0); //modelAttribs.Indices.length: WebGL warning: drawElementsInstanced: Index buffer not bound.
+		gl.drawElements(gl.TRIANGLES, modelAttribs.Indices.length, gl.UNSIGNED_SHORT, 0);
 		requestAnimationFrame(loop);
 	};
 	requestAnimationFrame(loop);
