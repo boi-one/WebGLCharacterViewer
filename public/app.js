@@ -1,4 +1,7 @@
 let canvas = document.querySelector('canvas');
+canvas.width = window.screen.width*0.96;
+canvas.height = window.screen.height*0.8;
+
 let gl = canvas.getContext('webgl');
 let model;
 //let objectPath = './Susan.json';
@@ -84,16 +87,30 @@ function CreateBuffer(ModelResources, meshArrayPosition){
 	let modelAttribs = new ModelAttributes(vertices, indices, textureCoords);
 	return modelAttribs;
 }
-function BindBuffer(modelAttribs, program){
+function BindBuffer(buffer, bufferType, arrayType){
+	let newBuffer = gl.createBuffer();
+	gl.bindBuffer(bufferType, newBuffer);
+	gl.bufferData(bufferType, new arrayType(buffer), gl.STATIC_DRAW);
+	return newBuffer;
+}
+function ConfigureAttribPointer(program, glslVar, elementsPerAttribute, elementType, normalized, vertexSize, vertexOffset){
+	let attribLocation = gl.getAttribLocation(program, glslVar);
+	gl.vertexAttribPointer(attribLocation, elementsPerAttribute, elementType, normalized, vertexSize, vertexOffset);
+	gl.enableVertexAttribArray(attribLocation);
+}
+function oldBindBuffer(modelAttribs, program){
 	let modelPosVertexBufferObject = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, modelPosVertexBufferObject);
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelAttribs.Vertices), gl.STATIC_DRAW);
+	
 	let modelTexCoordVertexBufferObject = gl.createBuffer();
 	gl.bindBuffer(gl.ARRAY_BUFFER, modelTexCoordVertexBufferObject);
 	gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(modelAttribs.TexCoords), gl.STATIC_DRAW);
+	
 	let modelIndexBufferObject = gl.createBuffer();
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, modelIndexBufferObject);
 	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(modelAttribs.Indices), gl.STATIC_DRAW);
+	
 	gl.bindBuffer(gl.ARRAY_BUFFER, modelPosVertexBufferObject);
 	let positionAttribLocation = gl.getAttribLocation(program, 'vertPosition');
 	gl.vertexAttribPointer(
@@ -105,6 +122,7 @@ function BindBuffer(modelAttribs, program){
 	0 // Offset from the beginning of a single vertex to this attribute
 	);
 	gl.enableVertexAttribArray(positionAttribLocation);
+	
 	gl.bindBuffer(gl.ARRAY_BUFFER, modelTexCoordVertexBufferObject);
 	let texCoordAttribLocation = gl.getAttribLocation(program, 'vertTexCoord');
 	gl.vertexAttribPointer(
@@ -138,12 +156,17 @@ let Start = function (objectResources) {
 	let fragmentShader = CreateShader(gl.FRAGMENT_SHADER, objectResources.fragmentShader);
 	let shaderProgram = CreateProgram(vertexShader, fragmentShader);
 	let modelAttribs = CreateBuffer(objectResources, 0);
-	BindBuffer(modelAttribs, shaderProgram);
+	let vertexBuffer = BindBuffer(modelAttribs.Vertices, gl.ARRAY_BUFFER, Float32Array);
+	ConfigureAttribPointer(shaderProgram, 'vertPosition', 3, gl.FLOAT, gl.FALSE, 3 * Float32Array.BYTES_PER_ELEMENT, 0);
+	let textureBuffer = BindBuffer(modelAttribs.TexCoords, gl.ARRAY_BUFFER, Float32Array);
+	ConfigureAttribPointer(shaderProgram, 'vertTexCoord', 2, gl.FLOAT, gl.FALSE, 2 * Float32Array.BYTES_PER_ELEMENT, 0);
+	let indicesBuffer = BindBuffer(modelAttribs.Indices, gl.ELEMENT_ARRAY_BUFFER, Uint16Array);
 	objectResources.texture = CreateTexture(objectResources.texture);
 
 	
 
 	// Tell OpenGL state machine which program should be active.
+	
 	gl.useProgram(shaderProgram);
 
 	let matWorldUniformLocation = gl.getUniformLocation(shaderProgram, 'mWorld');
@@ -181,10 +204,10 @@ let Start = function (objectResources) {
 		gl.clearColor(0.75, 0.85, 0.8, 1.0);
 		gl.clear(gl.DEPTH_BUFFER_BIT | gl.COLOR_BUFFER_BIT);
 
-		gl.bindTexture(gl.TEXTURE_2D, objectResources.texture); //objectresources en modelattribs duren lang om te laden
+		gl.bindTexture(gl.TEXTURE_2D, objectResources.texture);
 		gl.activeTexture(gl.TEXTURE0);
 		
-		gl.drawElements(gl.TRIANGLES, modelAttribs.Indices.length, gl.UNSIGNED_SHORT, 0);
+		gl.drawElements(gl.TRIANGLES, modelAttribs.Indices.length, gl.UNSIGNED_SHORT, 0); //modelAttribs.Indices.length: WebGL warning: drawElementsInstanced: Index buffer not bound.
 		requestAnimationFrame(loop);
 	};
 	requestAnimationFrame(loop);

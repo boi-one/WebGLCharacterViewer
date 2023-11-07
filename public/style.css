@@ -1,8 +1,8 @@
-table, tr, td{
-    border-width: 0.1ch;
-    border-collapse: collapse;
-    border-style: solid;
-}
-td{
-    padding: 1%;
+h1{
+    font-family: Arial;
+    position: fixed;
+    color: white;
+    background-color: black;
+    width: 100%;
+    text-align: center;
 }
